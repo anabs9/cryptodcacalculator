@@ -1,0 +1,1561 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Crypto DCA Calculator — with CSV Export</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <!-- jQuery + Select2 -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+  <style>
+    :root{
+      --bg: #0a0e17;
+      --card: rgba(16, 22, 36, 0.85);
+      --card-border: rgba(255,255,255,0.08);
+      --accent: #7c3aed;
+      --accent-glow: rgba(124, 58, 237, 0.4);
+      --accent-light: #8b5cf6;
+      --muted: #94a3b8;
+      --text: #e6eef8;
+      --profit: #10b981;
+      --profit-glow: rgba(16, 185, 129, 0.3);
+      --loss: #ef4444;
+      --loss-glow: rgba(239, 68, 68, 0.3);
+      --warning: #f59e0b;
+      --success: #22c55e;
+      color-scheme: dark;
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    body{ 
+      margin:0; 
+      background: 
+        radial-gradient(ellipse at top left, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+        linear-gradient(180deg, var(--bg) 0%, #0d1424 100%);
+      color: var(--text); 
+      padding:22px; 
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23374151' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+      opacity: 0.5;
+      z-index: -1;
+    }
+    
+    /* Top header + nav (always visible) */
+    .site-header { 
+      max-width:1100px; 
+      margin:0 auto 18px; 
+      display:flex; 
+      gap:12px; 
+      align-items:center; 
+      padding:12px 20px; 
+      background: var(--card);
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(2, 6, 23, 0.4);
+    }
+    
+    .site-header img { 
+      filter: grayscale(1) opacity(.9) brightness(1.2);
+      border-radius:6px; 
+      width:36px; 
+      height:36px;
+      object-fit: cover;
+    }
+    
+    .site-header h1 { 
+      margin:0; 
+      font-size:18px; 
+      font-weight: 700;
+      background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .site-header .muted { 
+      color:var(--muted); 
+      font-size:13px; 
+      display:block; 
+      margin-top:2px; 
+    }
+    
+    .top-nav { 
+      margin-left:auto; 
+      display:flex; 
+      gap:12px; 
+      align-items:center; 
+    }
+    
+    .top-nav a { 
+      color: var(--muted); 
+      text-decoration:none; 
+      font-weight:600; 
+      padding:8px 14px; 
+      border-radius:8px; 
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    
+    .top-nav a.active { 
+      color: white; 
+      background: rgba(124,58,237,0.15); 
+      border: 1px solid rgba(124,58,237,0.3); 
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+    
+    .top-nav a:hover { 
+      color: white; 
+      background: rgba(124,58,237,0.1);
+      transform: translateY(-2px);
+    }
+
+    .wrap{ 
+      max-width:1100px; 
+      margin:0 auto; 
+      display:grid; 
+      gap:18px; 
+      grid-template-columns: 1fr 420px; 
+      align-items:start; 
+    }
+    
+    .card{ 
+      background: var(--card);
+      padding:20px; 
+      border-radius:16px; 
+      border:1px solid var(--card-border); 
+      backdrop-filter: blur(10px);
+      box-shadow:0 10px 25px rgba(2,6,23,0.5);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card:hover {
+      box-shadow:0 15px 35px rgba(2,6,23,0.6);
+      transform: translateY(-5px);
+    }
+    
+    label{ 
+      display:block; 
+      margin-bottom:8px; 
+      font-size:14px; 
+      color:var(--muted);
+      font-weight: 500;
+    }
+    
+    select, input, button{ 
+      width:100%; 
+      padding:12px 14px; 
+      border-radius:10px; 
+      border:1px solid rgba(255,255,255,0.1); 
+      background:rgba(15, 23, 42, 0.7); 
+      color:inherit; 
+      font-size:14px; 
+      outline:none;
+      transition: all 0.3s ease;
+    }
+    
+    select:focus, input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    
+    .controls { 
+      display:grid; 
+      gap:16px; 
+    }
+    
+    .row{ 
+      display:flex; 
+      gap:12px; 
+    }
+    
+    .row > * { 
+      flex:1; 
+    }
+    
+    small { 
+      color:var(--muted); 
+    }
+    
+    .muted { 
+      color:var(--muted); 
+      font-size:13px; 
+    }
+    
+    .stats { 
+      display:grid; 
+      grid-template-columns:repeat(2,1fr); 
+      gap:12px; 
+      margin-top:16px; 
+    }
+    
+    .stat { 
+      background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      padding:14px; 
+      border-radius:12px; 
+      text-align:center;
+      border: 1px solid rgba(255,255,255,0.05);
+      transition: all 0.3s ease;
+    }
+    
+    .stat:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .stat h3{ 
+      margin:0; 
+      font-size:13px; 
+      color:var(--muted);
+      font-weight: 600;
+    }
+    
+    .stat p{ 
+      margin:8px 0 0; 
+      font-weight:700; 
+      font-size:18px; 
+    }
+    
+    canvas { 
+      width:100% !important; 
+      height:360px !important; 
+      display:block; 
+    }
+    
+    .btn { 
+      background: linear-gradient(90deg, var(--accent), var(--accent-light));
+      border:none; 
+      color:white; 
+      cursor:pointer; 
+      padding:14px 18px; 
+      border-radius:10px; 
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px var(--accent-glow);
+    }
+    
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px var(--accent-glow);
+    }
+    
+    .btn-secondary {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: none;
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.12);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+    }
+    
+    footer{ 
+      grid-column:1/-1; 
+      font-size:13px; 
+      color:var(--muted); 
+      display:flex; 
+      gap:8px; 
+      align-items:center; 
+      justify-content:space-between; 
+      margin-top:12px; 
+      padding: 16px 0;
+    }
+    
+    #downloadCsvBtn{ 
+      display:none; 
+      margin-top:16px; 
+    }
+    
+    .error { 
+      color: var(--loss); 
+      font-size: 12px; 
+      margin-top: 6px; 
+      font-weight: 500;
+    }
+    
+    .loading { 
+      opacity: 0.6; 
+      pointer-events: none; 
+    }
+    
+    .hidden { 
+      display: none !important; 
+    }
+    
+    .warning { 
+      background: rgba(245, 158, 11, 0.1); 
+      border: 1px solid rgba(245, 158, 11, 0.3); 
+      padding: 14px; 
+      border-radius: 12px; 
+      margin-bottom: 16px;
+      backdrop-filter: blur(5px);
+    }
+    
+    .warning-icon { 
+      color: var(--warning); 
+      margin-right: 8px; 
+    }
+    
+    .success { 
+      background: rgba(34, 197, 94, 0.1); 
+      border: 1px solid rgba(34, 197, 94, 0.3); 
+      padding: 14px; 
+      border-radius: 12px; 
+      margin-bottom: 16px;
+      backdrop-filter: blur(5px);
+    }
+    
+    .success-icon { 
+      color: var(--success); 
+      margin-right: 8px; 
+    }
+
+    /* Select2 styling */
+    .select2-container--default .select2-selection--single {
+      background-color: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      height: 46px;
+      color: #fff;
+      transition: all 0.3s ease;
+    }
+    
+    .select2-container--default .select2-selection--single:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+      color: #fff;
+      line-height: 46px;
+      padding-left: 12px;
+    }
+    
+    .select2-container--default .select2-results>.select2-results__options {
+      background: var(--card);
+      color: #fff;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+    }
+    
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+      background: rgba(15, 23, 42, 0.7);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+    }
+
+    /* Fix plain white dropdowns */
+    select {
+      background-color: rgba(15, 23, 42, 0.7) !important;
+      color: #fff !important;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    select option {
+      background-color: var(--card);
+      color: #fff;
+    }
+
+    /* Profit/Loss glow */
+    #sum-profit {
+      font-weight: bold;
+      font-size: 18px;
+      text-shadow: 0 0 8px currentColor;
+    }
+    
+    .profit-glow {
+      color: var(--profit);
+      text-shadow: 0 0 10px var(--profit-glow);
+    }
+    
+    .loss-glow {
+      color: var(--loss);
+      text-shadow: 0 0 10px var(--loss-glow);
+    }
+
+    /* Page content sections (About / Disclaimer / Privacy) */
+    .page-container { 
+      max-width:1100px; 
+      margin:18px auto; 
+    }
+    
+    .page-card { 
+      display:none; 
+    }
+    
+    .page-card.active { 
+      display:block; 
+    }
+    
+    .page-card h2 {
+      margin-top: 0;
+      background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 28px;
+    }
+    
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: rgba(124, 58, 237, 0.1);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 8px;
+      color: var(--accent-light);
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    
+    .back-link:hover {
+      background: rgba(124, 58, 237, 0.2);
+      transform: translateY(-2px);
+    }
+
+    /* Mobile Styles */
+    @media (max-width: 980px){ 
+      body {
+        padding: 12px;
+      }
+      
+      .wrap{ 
+        grid-template-columns: 1fr; 
+        gap: 16px;
+      } 
+      
+      .site-header{ 
+        padding: 16px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 12px;
+      } 
+      
+      .site-header > div {
+        flex: 1;
+        min-width: 200px;
+      }
+      
+      .top-nav{ 
+        gap: 8px; 
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+      } 
+      
+      .top-nav a {
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+      
+      .row {
+        flex-direction: column;
+      }
+      
+      .card {
+        padding: 16px;
+      }
+      
+      .stats {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      
+      .stat {
+        padding: 12px;
+      }
+      
+      .stat p {
+        font-size: 16px;
+      }
+      
+      canvas {
+        height: 300px !important;
+      }
+      
+      footer {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+      }
+      
+      /* Mobile-specific adjustments for better touch targets */
+      select, input, button {
+        padding: 14px 16px;
+        font-size: 16px; /* Prevents zoom on iOS */
+      }
+      
+      .btn, .btn-secondary {
+        padding: 16px 18px;
+      }
+      
+      /* Adjust charts container for mobile */
+      #charts {
+        overflow-x: auto;
+      }
+    }
+    
+    /* Extra small devices */
+    @media (max-width: 480px) {
+      .site-header {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .site-header > div {
+        width: 100%;
+      }
+      
+      .top-nav a {
+        padding: 6px 10px;
+        font-size: 13px;
+      }
+      
+      .card {
+        padding: 14px;
+      }
+      
+      canvas {
+        height: 250px !important;
+      }
+    }
+    
+    /* Floating animation for cards */
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+    
+    .floating {
+      animation: float 6s ease-in-out infinite;
+    }
+    
+    /* Glow effect for important elements */
+    .glow {
+      box-shadow: 0 0 20px currentColor;
+    }
+    
+    /* Crypto icon styling */
+    .crypto-icon {
+      width: 24px;
+      height: 24px;
+      margin-right: 8px;
+      vertical-align: middle;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER (always visible, contains navigation) -->
+  <header class="site-header floating">
+    <img src="https://i.ibb.co/ch2qfGCm/crypto-logo.png" alt="Crypto DCA Calculator Logo" />
+    <div>
+      <h1 style="font-size:16px; margin:0">Crypto DCA Calculator 🔨🤖🔧</h1>
+      <small class="muted">Now with CSV export of buy history ✔️</small>
+    </div>
+
+    <nav class="top-nav" aria-label="Site navigation">
+      <a href="#calculator" data-page="calculator" class="active" id="nav-calculator">Calculator</a>
+      <a href="#about" data-page="about" id="nav-about">About</a>
+      <a href="#disclaimer" data-page="disclaimer" id="nav-disclaimer">Disclaimer</a>
+      <a href="#privacy" data-page="privacy" id="nav-privacy">Privacy Policy</a>
+    </nav>
+  </header>
+
+  <!-- MAIN APP (calculator). Keep original layout, but without header inside it -->
+  <div class="wrap card" id="appWrap">
+    <!-- Left column: controls -->
+    <section class="card" id="left">
+      <div class="warning hidden" id="apiWarning">
+        <span class="warning-icon">⚠️</span>
+        <span id="warningText"></span>
+      </div>
+      
+      <div class="success hidden" id="apiSuccess">
+        <span class="success-icon">✅</span>
+        <span id="successText"></span>
+      </div>
+      
+      <div class="controls">
+        <div>
+          <label for="coinSelect">Choose cryptocurrency</label>
+          <select id="coinSelect">
+            <!-- Top 100+ cryptocurrencies will be loaded here -->
+          </select>
+          <div id="coinError" class="error hidden"></div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="startDate">Start date</label>
+            <input type="date" id="startDate" />
+            <div id="startDateError" class="error hidden"></div>
+          </div>
+          <div>
+            <label for="endDate">End date</label>
+            <input type="date" id="endDate" />
+            <div id="endDateError" class="error hidden"></div>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="intervalEl">Interval</label>
+            <select id="intervalEl"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select>
+          </div>
+          <div>
+            <label for="amountEl">Amount per buy (USD)</label>
+            <input id="amountEl" type="number" value="50" min="1" step="0.01" />
+            <div id="amountError" class="error hidden"></div>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="modeEl">Mode</label>
+            <select id="modeEl"><option value="dca">Recurring DCA</option><option value="lump">Lump-sum</option></select>
+          </div>
+          <div>
+            <label for="totalEl">Total amount (USD) — for lump</label>
+            <input id="totalEl" type="number" placeholder="Only for Lump-sum" min="1" step="0.01" value="1000" />
+            <div id="totalError" class="error hidden"></div>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn" id="runBtn">Run simulation</button>
+          <button id="resetBtn" type="button" class="btn-secondary">Reset</button>
+        </div>
+        <button class="btn" id="downloadCsvBtn">⬇️ Download Buy History (CSV)</button>
+      </div>
+    </section>
+
+    <!-- Right column: stats -->
+    <aside class="card" id="right">
+      <div><label>Current price (USD)</label><p id="currentPrice" style="font-size:18px; margin:6px 0">—</p></div>
+      <div class="stats">
+        <div class="stat"><h3>Total USD Spent</h3><p id="stat-spent">—</p></div>
+        <div class="stat"><h3>Total Coins Bought</h3><p id="stat-coins">—</p></div>
+        <div class="stat"><h3>Avg Cost / coin</h3><p id="stat-avg">—</p></div>
+        <div class="stat"><h3>Current Value (USD)</h3><p id="stat-value">—</p></div>
+      </div>
+      <h4 style="margin:18px 0 8px 0">📊 Summary</h4>
+      <div class="stats">
+        <div class="stat"><h3>Number of Buys</h3><p id="sum-buys">—</p></div>
+        <div class="stat" id="profitBox"><h3>Profit / Loss</h3><p id="sum-profit">—</p></div>
+        <div class="stat"><h3>ROI (%)</h3><p id="sum-roi">—</p></div>
+      </div>
+    </aside>
+
+    <!-- Charts (full width) -->
+    <section class="card" id="charts" style="grid-column:1/-1;">
+      <div style="display:grid; gap:16px;">
+        <div><h3 style="margin:0 0 8px 0">Historical price (USD)</h3><canvas id="priceChart"></canvas></div>
+        <div><h3 style="margin:0 0 8px 0">DCA result — value over buys</h3><canvas id="dcaChart"></canvas></div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="muted">Uses CoinGecko API — for simulation only.</div>
+      <div style="font-size:13px" class="muted">Not financial advice ❗</div>
+    </footer>
+  </div>
+
+  <!-- ABOUT / DISCLAIMER / PRIVACY (single-file pages) -->
+  <div class="page-container">
+    <article id="aboutPage" class="card page-card" aria-labelledby="aboutTitle">
+      <h2 id="aboutTitle">About Crypto DCA Calculator</h2>
+      <p>
+        The Crypto DCA Calculator was designed as a practical tool for anyone interested in exploring the
+        benefits of Dollar-Cost Averaging (DCA) in cryptocurrency investing. Our goal is to provide investors
+        with a transparent, data-driven way to simulate how recurring purchases compare against lump-sum investing.
+      </p>
+      <p>
+        Unlike many calculators that offer only basic outputs, this tool integrates real market data
+        (powered by the CoinGecko API) and offers detailed breakdowns, including total spent, average cost per coin,
+        ROI, and simulated profit/loss. By visualizing investments with clear charts, users can understand how timing,
+        frequency, and market volatility impact results.
+      </p>
+      <p>
+        The calculator lets you choose from a large list of popular cryptocurrencies, select a date range,
+        pick an interval (daily, weekly, monthly), and either run a recurring DCA plan or a lump-sum simulation.
+        Each simulated buy is matched to the nearest historical price point so the output reflects plausible outcomes.
+      </p>
+      <p>
+        This project was created to help both beginners and experienced investors better understand possible outcomes
+        without risking real funds. It is intended for educational purposes and to demonstrate how different strategies
+        can behave over time and under varying market conditions.
+      </p>
+      <p>
+        Our mission is to make crypto investing more accessible and transparent. While we do not provide financial advice,
+        we strongly believe that informed decisions lead to better outcomes. Use this calculator to learn, experiment, and
+        refine your approach before committing capital.
+      </p>
+      <p><a href="#calculator" data-page="calculator" class="back-link">⬅️ Back to Calculator</a></p>
+    </article>
+
+    <article id="disclaimerPage" class="card page-card" aria-labelledby="disclaimerTitle">
+      <h2 id="disclaimerTitle">Disclaimer</h2>
+      <p>
+        The Crypto DCA Calculator is provided for informational and educational purposes only. The results
+        generated by this tool are simulations based on historical price data and should not be interpreted
+        as financial, investment, or trading advice.
+      </p>
+      <p>
+        Cryptocurrency markets are highly volatile and unpredictable. Past performance is not indicative of
+        future results. By using this tool, you acknowledge that investment decisions carry inherent risks,
+        including the possibility of losing part or all of your invested capital.
+      </p>
+      <p>
+        We do not guarantee the accuracy, completeness, or timeliness of the data or calculations presented.
+        Data is fetched from third-party sources (e.g., CoinGecko), and we are not responsible for inaccuracies
+        in those services. All calculations are estimates and illustrative; real-world slippage, fees, taxes,
+        and exchange availability are not modeled in detail here.
+      </p>
+      <p>
+        Users are encouraged to conduct independent research and consult with licensed financial advisors before
+        making investment decisions. By accessing and using this calculator, you agree that the creators and operators
+        of this website are not responsible for any losses, damages, or actions taken based on the information provided.
+      </p>
+      <p><a href="#calculator" data-page="calculator" class="back-link">⬅️ Back to Calculator</a></p>
+    </article>
+
+    <article id="privacyPage" class="card page-card" aria-labelledby="privacyTitle">
+      <h2 id="privacyTitle">Privacy Policy</h2>
+      <p>
+        We respect your privacy. This Crypto DCA Calculator does not collect personal data such as names,
+        email addresses, or financial account information. The tool runs primarily in your browser, and most
+        calculations are processed locally without storing or transmitting user inputs to our servers.
+      </p>
+      <p>
+        The site may request non-personal data from third-party services (for example, price data from CoinGecko).
+        We do not control the data collection or processing practices of those external providers; please consult
+        their privacy policies for details.
+      </p>
+      <p>
+        To help support this project, the site may display advertisements (for example via Google AdSense). Third-party
+        advertising providers may use cookies, web beacons, and similar technologies to serve ads and collect usage data.
+        If you prefer, you can block or limit cookies in your browser settings or use privacy extensions to reduce tracking.
+      </p>
+      <p>
+        This Privacy Policy may be updated periodically to reflect changes in our practices, features, or applicable laws.
+        Continued use of the site after policy changes implies acceptance of those changes.
+      </p>
+      <p><a href="#calculator" data-page="calculator" class="back-link">⬅️ Back to Calculator</a></p>
+    </article>
+  </div>
+
+  <script>
+    // DOM element references (same $ helper from your original code)
+    const $ = id => document.getElementById(id);
+
+    const coinSelect = $('coinSelect');
+    const startDate = $('startDate');
+    const endDate = $('endDate');
+    const intervalEl = $('intervalEl');
+    const amountEl = $('amountEl');
+    const runBtn = $('runBtn');
+    const resetBtn = $('resetBtn');
+    const modeEl = $('modeEl');
+    const totalEl = $('totalEl');
+    const downloadCsvBtn = $('downloadCsvBtn');
+    const apiWarning = $('apiWarning');
+    const warningText = $('warningText');
+    const apiSuccess = $('apiSuccess');
+    const successText = $('successText');
+
+    // Display elements
+    const currentPriceEl = $('currentPrice');
+    const statSpent = $('stat-spent');
+    const statCoins = $('stat-coins');
+    const statAvg = $('stat-avg');
+    const statValue = $('stat-value');
+    const sumBuys = $('sum-buys');
+    const sumProfit = $('sum-profit');
+    const sumRoi = $('sum-roi');
+    const profitBox = $('profitBox');
+
+    // Error display elements
+    const coinError = $('coinError');
+    const startDateError = $('startDateError');
+    const endDateError = $('endDateError');
+    const amountError = $('amountError');
+    const totalError = $('totalError');
+
+    // State variables
+    let lastBuyRecords = [];
+    let isRunning = false;
+
+    // Expanded list of 100+ popular cryptocurrencies
+    const popularCoins = [
+      { id: 'bitcoin', name: 'Bitcoin (BTC)', symbol: 'btc' },
+      { id: 'ethereum', name: 'Ethereum (ETH)', symbol: 'eth' },
+      { id: 'tether', name: 'Tether (USDT)', symbol: 'usdt' },
+      { id: 'binancecoin', name: 'BNB (BNB)', symbol: 'bnb' },
+      { id: 'solana', name: 'Solana (SOL)', symbol: 'sol' },
+      { id: 'usd-coin', name: 'USD Coin (USDC)', symbol: 'usdc' },
+      { id: 'xrp', name: 'XRP (XRP)', symbol: 'xrp' },
+      { id: 'cardano', name: 'Cardano (ADA)', symbol: 'ada' },
+      { id: 'dogecoin', name: 'Dogecoin (DOGE)', symbol: 'doge' },
+      { id: 'shiba-inu', name: 'Shiba Inu (SHIB)', symbol: 'shib' },
+      { id: 'avalanche-2', name: 'Avalanche (AVAX)', symbol: 'avax' },
+      { id: 'polkadot', name: 'Polkadot (DOT)', symbol: 'dot' },
+      { id: 'chainlink', name: 'Chainlink (LINK)', symbol: 'link' },
+      { id: 'tron', name: 'TRON (TRX)', symbol: 'trx' },
+      { id: 'polygon-pos', name: 'Polygon (MATIC)', symbol: 'matic' },
+      { id: 'wrapped-bitcoin', name: 'Wrapped Bitcoin (WBTC)', symbol: 'wbtc' },
+      { id: 'uniswap', name: 'Uniswap (UNI)', symbol: 'uni' },
+      { id: 'toncoin', name: 'Toncoin (TON)', symbol: 'ton' },
+      { id: 'bitcoin-cash', name: 'Bitcoin Cash (BCH)', symbol: 'bch' },
+      { id: 'litecoin', name: 'Litecoin (LTC)', symbol: 'ltc' },
+      { id: 'dai', name: 'Dai (DAI)', symbol: 'dai' },
+      { id: 'internet-computer', name: 'Internet Computer (ICP)', symbol: 'icp' },
+      { id: 'ethereum-classic', name: 'Ethereum Classic (ETC)', symbol: 'etc' },
+      { id: 'stellar', name: 'Stellar (XLM)', symbol: 'xlm' },
+      { id: 'cosmos', name: 'Cosmos (ATOM)', symbol: 'atom' },
+      { id: 'okb', name: 'OKB (OKB)', symbol: 'okb' },
+      { id: 'monero', name: 'Monero (XMR)', symbol: 'xmr' },
+      { id: 'filecoin', name: 'Filecoin (FIL)', symbol: 'fil' },
+      { id: 'aptos', name: 'Aptos (APT)', symbol: 'apt' },
+      { id: 'hedera-hashgraph', name: 'Hedera (HBAR)', symbol: 'hbar' },
+      { id: 'crypto-com-chain', name: 'Cronos (CRO)', symbol: 'cro' },
+      { id: 'lido-dao', name: 'Lido DAO (LDO)', symbol: 'ldo' },
+      { id: 'arbitrum', name: 'Arbitrum (ARB)', symbol: 'arb' },
+      { id: 'vechain', name: 'VeChain (VET)', symbol: 'vet' },
+      { id: 'near', name: 'NEAR Protocol (NEAR)', symbol: 'near' },
+      { id: 'mantle', name: 'Mantle (MNT)', symbol: 'mnt' },
+      { id: 'the-graph', name: 'The Graph (GRT)', symbol: 'grt' },
+      { id: 'optimism', name: 'Optimism (OP)', symbol: 'op' },
+      { id: 'maker', name: 'Maker (MKR)', symbol: 'mkr' },
+      { id: 'rocket-pool-eth', name: 'Rocket Pool ETH (RETH)', symbol: 'reth' },
+      { id: 'aave', name: 'Aave (AAVE)', symbol: 'aave' },
+      { id: 'algorand', name: 'Algorand (ALGO)', symbol: 'algo' },
+      { id: 'the-sandbox', name: 'The Sandbox (SAND)', symbol: 'sand' },
+      { id: 'eos', name: 'EOS (EOS)', symbol: 'eos' },
+      { id: 'elrond-erd-2', name: 'MultiversX (EGLD)', symbol: 'egld' },
+      { id: 'tezos', name: 'Tezos (XTZ)', symbol: 'xtz' },
+      { id: 'theta-token', name: 'Theta Network (THETA)', symbol: 'theta' },
+      { id: 'axelar', name: 'Axelar (AXL)', symbol: 'axl' },
+      { id: 'decentraland', name: 'Decentraland (MANA)', symbol: 'mana' },
+      { id: 'flow', name: 'Flow (FLOW)', symbol: 'flow' },
+      { id: 'gala', name: 'Gala (GALA)', symbol: 'gala' },
+      { id: 'klay-token', name: 'Klaytn (KLAY)', symbol: 'klay' },
+      { id: 'thorchain', name: 'THORChain (RUNE)', symbol: 'rune' },
+      { id: 'neo', name: 'NEO (NEO)', symbol: 'neo' },
+      { id: 'mina-protocol', name: 'Mina Protocol (MINA)', symbol: 'mina' },
+      { id: 'kava', name: 'Kava (KAVA)', symbol: 'kava' },
+      { id: 'paxos-standard', name: 'Pax Dollar (USDP)', symbol: 'usdp' },
+      { id: 'curve-dao-token', name: 'Curve DAO (CRV)', symbol: 'crv' },
+      { id: 'frax', name: 'Frax (FRAX)', symbol: 'frax' },
+      { id: 'iota', name: 'IOTA (IOTA)', symbol: 'iota' },
+      { id: 'kucoin-shares', name: 'KuCoin (KCS)', symbol: 'kcs' },
+      { id: 'osmosis', name: 'Osmosis (OSMO)', symbol: 'osmo' },
+      { id: 'conflux-token', name: 'Conflux (CFX)', symbol: 'cfx' },
+      { id: 'zilliqa', name: 'Zilliqa (ZIL)', symbol: 'zil' },
+      { id: 'pancakeswap-token', name: 'PancakeSwap (CAKE)', symbol: 'cake' },
+      { id: 'oasis-network', name: 'Oasis Network (ROSE)', symbol: 'rose' },
+      { id: 'chiliz', name: 'Chiliz (CHZ)', symbol: 'chz' },
+      { id: 'gatechain-token', name: 'GateToken (GT)', symbol: 'gt' },
+      { id: 'gnosis-gno', name: 'Gnosis (GNO)', symbol: 'gno' },
+      { id: 'casper-network', name: 'Casper (CSPR)', symbol: 'cspr' },
+      { id: 'enjincoin', name: 'Enjin Coin (ENJ)', symbol: 'enj' },
+      { id: 'compound-governance-token', name: 'Compound (COMP)', symbol: 'comp' },
+      { id: 'loopring', name: 'Loopring (LRC)', symbol: 'lrc' },
+      { id: 'dydx', name: 'dYdX (DYDX)', symbol: 'dydx' },
+      { id: 'basic-attention-token', name: 'Basic Attention Token (BAT)', symbol: 'bat' },
+      { id: 'holotoken', name: 'Holo (HOT)', symbol: 'hot' },
+      { id: 'qtum', name: 'Qtum (QTUM)', symbol: 'qtum' },
+      { id: 'nexo', name: 'NEXO (NEXO)', symbol: 'nexo' },
+      { id: 'zcash', name: 'Zcash (ZEC)', symbol: 'zec' },
+      { id: 'celo', name: 'Celo (CELO)', symbol: 'celo' },
+      { id: 'ravencoin', name: 'Ravencoin (RVN)', symbol: 'rvn' },
+      { id: 'waves', name: 'Waves (WAVES)', symbol: 'waves' },
+      { id: 'dexe', name: 'DeXe (DEXE)', symbol: 'dexe' },
+      { id: 'synthetix-network-token', name: 'Synthetix (SNX)', symbol: 'snx' },
+      { id: 'bitcoin-cash-sv', name: 'Bitcoin SV (BSV)', symbol: 'bsv' },
+      { id: 'siacoin', name: 'Siacoin (SC)', symbol: 'sc' },
+      { id: 'icon', name: 'ICON (ICX)', symbol: 'icx' },
+      { id: 'ontology', name: 'Ontology (ONT)', symbol: 'ont' },
+      { id: 'stacks', name: 'Stacks (STX)', symbol: 'stx' },
+      { id: 'harmony', name: 'Harmony (ONE)', symbol: 'one' },
+      { id: 'ankr', name: 'Ankr (ANKR)', symbol: 'ankr' },
+      { id: 'iotex', name: 'IoTeX (IOTX)', symbol: 'iotx' },
+      { id: '0x', name: '0x Protocol (ZRX)', symbol: 'zrx' },
+      { id: 'lisk', name: 'Lisk (LSK)', symbol: 'lsk' },
+      { id: 'omisego', name: 'OMG Network (OMG)', symbol: 'omg' },
+      { id: 'augur', name: 'Augur (REP)', symbol: 'rep' },
+      { id: 'numeraire', name: 'Numeraire (NMR)', symbol: 'nmr' },
+      { id: 'renbtc', name: 'renBTC (RENBTC)', symbol: 'renbtc' },
+      { id: 'balancer', name: 'Balancer (BAL)', symbol: 'bal' },
+      { id: 'reserve-rights-token', name: 'Reserve Rights (RSR)', symbol: 'rsr' },
+      { id: 'uma', name: 'UMA (UMA)', symbol: 'uma' },
+      { id: 'bancor', name: 'Bancor (BNT)', symbol: 'bnt' },
+      { id: 'kyber-network', name: 'Kyber Network (KNC)', symbol: 'knc' }
+    ];
+
+    // Utility functions
+    function destroyChartById(id) {
+      const chart = Chart.getChart(id);
+      if (chart) chart.destroy();
+    }
+
+    function showError(element, message) {
+      element.textContent = message;
+      element.classList.remove('hidden');
+    }
+
+    function hideError(element) {
+      element.textContent = '';
+      element.classList.add('hidden');
+    }
+
+    function showWarning(message) {
+      warningText.textContent = message;
+      apiWarning.classList.remove('hidden');
+    }
+
+    function hideWarning() {
+      apiWarning.classList.add('hidden');
+    }
+
+    function showSuccess(message) {
+      successText.textContent = message;
+      apiSuccess.classList.remove('hidden');
+    }
+
+    function hideSuccess() {
+      apiSuccess.classList.add('hidden');
+    }
+
+    function setLoadingState(loading) {
+      if (loading) {
+        runBtn.disabled = true;
+        runBtn.textContent = 'Running...';
+        document.body.classList.add('loading');
+        isRunning = true;
+      } else {
+        runBtn.disabled = false;
+        runBtn.textContent = 'Run simulation';
+        document.body.classList.remove('loading');
+        isRunning = false;
+      }
+    }
+
+    // Date validation and auto-correction
+    function validateAndCorrectDates() {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      
+      const start = new Date(startDate.value);
+      const end = new Date(endDate.value);
+      
+      // If dates are in the future, auto-correct to today
+      if (start > today) {
+        startDate.value = today.toISOString().split('T')[0];
+        showWarning('Start date was in the future. Auto-corrected to today.');
+      }
+      
+      if (end > today) {
+        endDate.value = today.toISOString().split('T')[0];
+        showWarning('End date was in the future. Auto-corrected to today.');
+      }
+      
+      // Ensure start date is before end date
+      const newStart = new Date(startDate.value);
+      const newEnd = new Date(endDate.value);
+      
+      if (newStart > newEnd) {
+        startDate.value = endDate.value;
+        showWarning('Start date was after end date. Auto-corrected.');
+      }
+      
+      return true;
+    }
+
+    function validateInputs() {
+      let isValid = true;
+      
+      // Reset errors and warnings
+      hideError(coinError);
+      hideError(startDateError);
+      hideError(endDateError);
+      hideError(amountError);
+      hideError(totalError);
+      hideWarning();
+      hideSuccess();
+      
+      // Auto-correct dates first
+      validateAndCorrectDates();
+      
+      // Validate coin selection
+      if (!coinSelect.value) {
+        showError(coinError, 'Please select a cryptocurrency');
+        isValid = false;
+      }
+
+      // Validate amounts
+      if (modeEl.value === 'dca') {
+        if (!amountEl.value || amountEl.value <= 0) {
+          showError(amountError, 'Amount must be greater than 0');
+          isValid = false;
+        }
+      } else {
+        if (!totalEl.value || totalEl.value <= 0) {
+          showError(totalError, 'Total amount must be greater than 0');
+          isValid = false;
+        }
+      }
+
+      return isValid;
+    }
+
+    // Simple API call without complex retry logic
+    async function simpleApiCall(url) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        console.error('API call failed:', error);
+        throw error;
+      }
+    }
+
+    // Data processing functions
+    function findNearestPrice(prices, targetTime) {
+      if (!prices || prices.length === 0) return null;
+      
+      // Simple linear search for nearest timestamp
+      let closestPrice = prices[0][1];
+      let minDiff = Math.abs(prices[0][0] - targetTime);
+      
+      for (let i = 1; i < prices.length; i++) {
+        const diff = Math.abs(prices[i][0] - targetTime);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestPrice = prices[i][1];
+        }
+      }
+      
+      return closestPrice;
+    }
+
+    function buildBuyTimes(start, end, interval) {
+      const buyTimes = [];
+      const current = new Date(start);
+      current.setUTCHours(12, 0, 0, 0); // Set to midday for consistency
+      
+      const endDate = new Date(end);
+      endDate.setUTCHours(23, 59, 59, 999);
+      
+      while (current <= endDate) {
+        buyTimes.push(current.getTime());
+        
+        if (interval === 'daily') {
+          current.setUTCDate(current.getUTCDate() + 1);
+        } else if (interval === 'weekly') {
+          current.setUTCDate(current.getUTCDate() + 7);
+        } else if (interval === 'monthly') {
+          current.setUTCMonth(current.getUTCMonth() + 1);
+        } else {
+          break;
+        }
+      }
+      
+      return buyTimes;
+    }
+
+    // Populate coin dropdown with 100+ coins
+    function populateCoinDropdown() {
+      coinSelect.innerHTML = '';
+      
+      // Add default option
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = 'Select a cryptocurrency...';
+      coinSelect.appendChild(defaultOption);
+      
+      // Add all coins from our list
+      popularCoins.forEach(coin => {
+        const option = document.createElement('option');
+        option.value = coin.id;
+        option.textContent = coin.name;
+        coinSelect.appendChild(option);
+      });
+      
+      // Initialize Select2 with search
+      $(coinSelect).select2({
+        placeholder: "Search cryptocurrency...",
+        width: '100%',
+        minimumResultsForSearch: 1
+      });
+      
+      // Set default coin to Solana
+      coinSelect.value = 'solana';
+      
+      // Trigger change to update display
+      $(coinSelect).trigger('change');
+    }
+
+    // UI initialization
+    function initializeUI() {
+      // Set up date inputs with reasonable defaults
+      const today = new Date();
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(today.getMonth() - 3);
+      
+      endDate.value = today.toISOString().split('T')[0];
+      startDate.value = threeMonthsAgo.toISOString().split('T')[0];
+      
+      // Set max dates to prevent future dates
+      startDate.max = today.toISOString().split('T')[0];
+      endDate.max = today.toISOString().split('T')[0];
+      
+      // Populate coin dropdown
+      populateCoinDropdown();
+      
+      // Set up mode change handler
+      handleModeChange();
+      
+      // Fetch current price for default coin
+      fetchAndShowCurrentPrice();
+    }
+
+    async function fetchAndShowCurrentPrice() {
+      try {
+        const coinId = coinSelect.value;
+        if (!coinId) return null;
+        
+        const data = await simpleApiCall(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`);
+        const price = data[coinId]?.usd;
+        
+        currentPriceEl.textContent = price ? `$${price.toLocaleString()}` : 'N/A';
+        return price;
+      } catch (error) {
+        console.error('Error fetching current price:', error);
+        currentPriceEl.textContent = 'N/A';
+        return null;
+      }
+    }
+
+    // Chart functions
+    function drawPriceChart(prices, buys) {
+      destroyChartById('priceChart');
+      
+      const priceData = prices.map(point => ({ x: point[0], y: point[1] }));
+      const buyData = buys.map(buy => ({ x: buy.time, y: buy.price }));
+      
+      new Chart($('priceChart'), {
+        type: 'line',
+        data: {
+          datasets: [
+            {
+              label: 'Price',
+              data: priceData,
+              borderColor: '#7c3aed',
+              backgroundColor: 'rgba(124,58,237,0.1)',
+              fill: true,
+              pointRadius: 0,
+              tension: 0.3
+            },
+            {
+              label: 'Buys',
+              data: buyData,
+              type: 'scatter',
+              pointBackgroundColor: '#ffb020',
+              pointRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'nearest', intersect: false },
+          plugins: {
+            tooltip: { 
+              callbacks: { 
+                label: context => `$${context.parsed.y.toFixed(2)}` 
+              } 
+            }
+          },
+          scales: { 
+            x: { 
+              type: 'time', 
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            }, 
+            y: { 
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: {
+                callback: value => `$${value}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function drawDcaChart(buys, currentPrice) {
+      destroyChartById('dcaChart');
+      
+      let totalUsd = 0;
+      let totalCoins = 0;
+      const spentData = [];
+      const valueData = [];
+      
+      buys.forEach(buy => {
+        totalUsd += buy.usd;
+        totalCoins += buy.coins;
+        spentData.push({ x: buy.time, y: totalUsd });
+        valueData.push({ x: buy.time, y: totalCoins * currentPrice });
+      });
+      
+      new Chart($('dcaChart'), {
+        type: 'line',
+        data: {
+          datasets: [
+            {
+              label: 'USD Spent',
+              data: spentData,
+              borderColor: '#06b6d4',
+              backgroundColor: 'rgba(6,182,212,0.1)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'Portfolio Value',
+              data: valueData,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16,185,129,0.1)',
+              fill: true,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'nearest', intersect: false },
+          plugins: {
+            tooltip: { 
+              callbacks: { 
+                label: context => `$${context.parsed.y.toFixed(2)}` 
+              } 
+            }
+          },
+          scales: { 
+            x: { 
+              type: 'time', 
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            }, 
+            y: { 
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: {
+                callback: value => `$${value}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Main simulation function - simplified and more reliable
+    async function runSimulation() {
+      if (isRunning) return;
+      
+      if (!validateInputs()) return;
+      
+      setLoadingState(true);
+      hideWarning();
+      hideSuccess();
+      
+      try {
+        const coinId = coinSelect.value;
+        const startTime = new Date(startDate.value).getTime();
+        const endTime = new Date(endDate.value).getTime();
+        
+        showSuccess('Fetching price data... This may take a moment.');
+        
+        // Use days parameter which is more reliable
+        const days = Math.ceil((endTime - startTime) / (1000 * 60 * 60 * 24));
+        const historicalData = await simpleApiCall(
+          `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days <= 90 ? 90 : (days <= 365 ? 365 : 'max')}`
+        );
+
+        if (!historicalData || !historicalData.prices || !historicalData.prices.length) {
+          throw new Error('No price data received from API');
+        }
+
+        let prices = historicalData.prices;
+        
+        // Filter prices to the selected date range
+        prices = prices.filter(price => price[0] >= startTime && price[0] <= endTime);
+
+        if (!prices.length) {
+          throw new Error('No price data found for the selected date range');
+        }
+
+        // Calculate buy times and amounts
+        const buyTimes = modeEl.value === 'dca' 
+          ? buildBuyTimes(startTime, endTime, intervalEl.value) 
+          : [startTime];
+          
+        const amounts = modeEl.value === 'lump' 
+          ? [Number(totalEl.value)] 
+          : buyTimes.map(() => Number(amountEl.value));
+        
+        let totalUsd = 0;
+        let totalCoins = 0;
+        lastBuyRecords = [];
+        
+        // Process each buy
+        buyTimes.forEach((time, index) => {
+          const price = findNearestPrice(prices, time);
+          if (!price || price <= 0) return; // Skip if no valid price found
+          
+          const usdAmount = amounts[index];
+          const coinsBought = usdAmount / price;
+          
+          totalUsd += usdAmount;
+          totalCoins += coinsBought;
+          
+          lastBuyRecords.push({
+            time: time,
+            price: price,
+            usd: usdAmount,
+            coins: coinsBought
+          });
+        });
+        
+        if (lastBuyRecords.length === 0) {
+          throw new Error('No valid buys could be processed');
+        }
+        
+        // Calculate results
+        const currentPrice = await fetchAndShowCurrentPrice();
+        if (!currentPrice) {
+          throw new Error('Could not fetch current price');
+        }
+        
+        const averageCost = totalUsd / totalCoins;
+        const currentValue = currentPrice * totalCoins;
+        const profit = currentValue - totalUsd;
+        const roi = (profit / totalUsd) * 100;
+        
+        // Update UI with results
+        statSpent.textContent = `$${totalUsd.toFixed(2)}`;
+        statCoins.textContent = totalCoins.toFixed(6);
+        statAvg.textContent = `$${averageCost.toFixed(4)}`;
+        statValue.textContent = `$${currentValue.toFixed(2)}`;
+        
+        sumBuys.textContent = lastBuyRecords.length;
+        sumProfit.textContent = `$${profit.toFixed(2)}`;
+        sumRoi.textContent = `${roi.toFixed(2)}%`;
+        
+        // Style profit/loss with glow effect
+        if (profit >= 0) {
+          sumProfit.classList.add('profit-glow');
+          sumProfit.classList.remove('loss-glow');
+          profitBox.style.background = "rgba(22,163,74,0.12)";
+        } else {
+          sumProfit.classList.add('loss-glow');
+          sumProfit.classList.remove('profit-glow');
+          profitBox.style.background = "rgba(220,38,38,0.12)";
+        }
+        
+        // Draw charts
+        drawPriceChart(prices, lastBuyRecords);
+        drawDcaChart(lastBuyRecords, currentPrice);
+        
+        // Show download button
+        downloadCsvBtn.style.display = "block";
+        
+        hideWarning();
+        showSuccess('Simulation completed successfully!');
+        
+      } catch (error) {
+        console.error("Error running simulation:", error);
+        showWarning(`API Error: ${error.message}. Please try again in a moment.`);
+      } finally {
+        setLoadingState(false);
+      }
+    }
+
+    function downloadCSV() {
+      if (!lastBuyRecords.length) {
+        alert("No buy history yet!");
+        return;
+      }
+      
+      const header = "Date,Price (USD),USD Spent,Coins Bought\n";
+      const rows = lastBuyRecords.map(buy => 
+        `${new Date(buy.time).toISOString().split('T')[0]},${buy.price},${buy.usd},${buy.coins}`
+      ).join("\n");
+      
+      const blob = new Blob([header + rows], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      
+      link.href = url;
+      link.download = "buy_history.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function handleModeChange() {
+      if (modeEl.value === 'lump') {
+        totalEl.disabled = false;
+        amountEl.disabled = true;
+      } else {
+        totalEl.disabled = true;
+        amountEl.disabled = false;
+      }
+    }
+
+    // Event listeners
+    coinSelect.addEventListener('change', () => {
+      fetchAndShowCurrentPrice();
+    });
+
+    modeEl.addEventListener('change', handleModeChange);
+
+    runBtn.addEventListener('click', runSimulation);
+
+    resetBtn.addEventListener('click', () => {
+      destroyChartById('priceChart');
+      destroyChartById('dcaChart');
+      initializeUI();
+      
+      // Reset stats
+      statSpent.textContent = '—';
+      statCoins.textContent = '—';
+      statAvg.textContent = '—';
+      statValue.textContent = '—';
+      sumBuys.textContent = '—';
+      sumProfit.textContent = '—';
+      sumRoi.textContent = '—';
+      
+      // Reset styling
+      profitBox.style.background = 'var(--glass)';
+      sumProfit.classList.remove('profit-glow', 'loss-glow');
+      downloadCsvBtn.style.display = "none";
+      
+      // Reset errors and warnings
+      hideError(coinError);
+      hideError(startDateError);
+      hideError(endDateError);
+      hideError(amountError);
+      hideError(totalError);
+      hideWarning();
+      hideSuccess();
+    });
+
+    downloadCsvBtn.addEventListener('click', downloadCSV);
+
+    // ---------- Single-file navigation (Calculator / About / Disclaimer / Privacy) ----------
+    const appWrap = $('appWrap');
+    const aboutPage = document.getElementById('aboutPage');
+    const disclaimerPage = document.getElementById('disclaimerPage');
+    const privacyPage = document.getElementById('privacyPage');
+    const navAnchors = document.querySelectorAll('.top-nav a');
+
+    function clearActiveNav() {
+      navAnchors.forEach(a => a.classList.remove('active'));
+    }
+
+    function showPage(page) {
+      clearActiveNav();
+      const navEl = document.querySelector(`.top-nav a[data-page="${page}"]`);
+      if (navEl) navEl.classList.add('active');
+
+      if (page === 'calculator') {
+        appWrap.style.display = 'grid';
+        aboutPage.classList.remove('active');
+        disclaimerPage.classList.remove('active');
+        privacyPage.classList.remove('active');
+        // ensure charts area visibility and restore state
+      } else {
+        appWrap.style.display = 'none';
+        aboutPage.classList.remove('active');
+        disclaimerPage.classList.remove('active');
+        privacyPage.classList.remove('active');
+
+        if (page === 'about') aboutPage.classList.add('active');
+        if (page === 'disclaimer') disclaimerPage.classList.add('active');
+        if (page === 'privacy') privacyPage.classList.add('active');
+
+        window.scrollTo(0,0);
+      }
+
+      // update URL hash without adding history entries
+      history.replaceState(null, '', '#' + page);
+    }
+
+    // Attach click handlers to nav anchors
+    navAnchors.forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = a.getAttribute('data-page') || 'calculator';
+        showPage(page);
+      });
+    });
+
+    // Also handle any in-page links (back links use href="#calculator")
+    document.addEventListener('click', (e) => {
+      const t = e.target;
+      if (t.tagName === 'A' && t.getAttribute('href') && t.getAttribute('href').startsWith('#')) {
+        const target = t.getAttribute('href').substring(1);
+        if (['calculator','about','disclaimer','privacy'].includes(target)) {
+          e.preventDefault();
+          showPage(target);
+        }
+      }
+    });
+
+    // Handle initial page load based on hash
+    // Initialize app when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeUI();
+
+      // default page = calculator
+      const desired = location.hash ? location.hash.substring(1) : 'calculator';
+      if (['calculator','about','disclaimer','privacy'].includes(desired)) {
+        showPage(desired);
+      } else {
+        showPage('calculator');
+      }
+    });
+
+    // Optional: support back/forward navigation
+    window.addEventListener('popstate', () => {
+      const hash = location.hash ? location.hash.substring(1) : 'calculator';
+      if (['calculator','about','disclaimer','privacy'].includes(hash)) showPage(hash);
+    });
+
+    // Keep Select2 responsive if the page is hidden/visible (works fine in most browsers)
+    // End of single-file navigation
+  </script>
+</body>
+</html>
